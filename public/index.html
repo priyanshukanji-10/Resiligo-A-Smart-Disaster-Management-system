@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>AAGHAZ-GIS | Multi-Hazard Red Zones & Relocation DSS</title>
+  <title>RESILIGO | Proactive Multi-Hazard Mapping & Relocation Platform</title>
   
   <!-- Modern Google Fonts: Plus Jakarta Sans & JetBrains Mono -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -26,6 +26,7 @@
               950: '#060a12',
               900: '#0b1120',
               850: '#0f172a',
+              28: '#0f172a',
               800: '#131e36',
               700: '#1b2a4d',
               600: '#253b6e',
@@ -50,65 +51,80 @@
 <body class="h-screen w-screen flex flex-col bg-[#070b14] text-slate-100 font-sans antialiased select-none">
 
   <!-- Top Operational Command Header -->
-  <header class="h-16 px-5 bg-[#0d1424]/90 border-b border-slate-800/80 flex items-center justify-between z-30 shrink-0 backdrop-blur-xl">
-    <div class="flex items-center space-x-3.5">
+  <header class="h-16 px-4 bg-[#0d1424]/90 border-b border-slate-800/80 flex items-center justify-between z-30 shrink-0 backdrop-blur-xl">
+    <div class="flex items-center space-x-3">
       <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-red-600 via-rose-600 to-amber-600 flex items-center justify-center shadow-md shadow-red-950/40 border border-red-400/30">
         <i data-lucide="shield-alert" class="w-5 h-5 text-white"></i>
       </div>
       <div>
-        <div class="flex items-center space-x-2.5">
+        <div class="flex items-center space-x-2">
           <h1 class="font-extrabold text-base tracking-tight text-white flex items-center">
-            <span>AAGHAZ-GIS</span>
-            <span class="ml-2.5 text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-md bg-blue-950/80 text-blue-300 border border-blue-800/60">Decision Platform</span>
+            <span>RESILIGO</span>
+            <span class="ml-2 text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-md bg-blue-950/90 text-blue-300 border border-blue-700/60">Bonchito Bytes</span>
           </h1>
-          <div class="flex items-center space-x-1.5 px-2.5 py-0.5 rounded-full bg-emerald-950/60 border border-emerald-500/30 text-[11px] text-emerald-400">
+          <div class="flex items-center space-x-1.5 px-2 py-0.5 rounded-full bg-emerald-950/60 border border-emerald-500/30 text-[10px] text-emerald-400">
             <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 live-pulse"></span>
-            <span class="font-mono font-medium tracking-tight">NDRF / SDMA TELEMETRY LIVE</span>
+            <span class="font-mono font-medium tracking-tight">SDMA / NDRF LIVE</span>
           </div>
         </div>
-        <p class="text-[11px] text-slate-400 font-normal mt-0.5">Ministry of Home Affairs • National Disaster Response Force & DM Division</p>
+        <p class="text-[10px] text-slate-400 font-normal mt-0.5">End-to-End System Architecture with Civilian Portal • MHA & NDRF</p>
       </div>
     </div>
 
     <!-- Center: Disaster Sector Selector -->
     <div class="flex items-center bg-[#090e1a] border border-slate-700/60 rounded-xl p-1 shadow-inner">
-      <label class="text-[11px] font-semibold text-slate-400 px-2.5 flex items-center tracking-wide">
+      <label class="text-[11px] font-semibold text-slate-400 px-2 flex items-center tracking-wide">
         <i data-lucide="map-pin" class="w-3.5 h-3.5 mr-1 text-cyan-400"></i> SECTOR:
       </label>
-      <select id="region-selector" class="bg-[#121c32] text-xs text-slate-100 px-3 py-1.5 rounded-lg border border-slate-600/50 focus:outline-none focus:border-cyan-400 cursor-pointer font-medium tracking-tight">
+      <select id="region-selector" class="bg-[#121c32] text-xs text-slate-100 px-2.5 py-1 rounded-lg border border-slate-600/50 focus:outline-none focus:border-cyan-400 cursor-pointer font-medium tracking-tight">
         <option value="himalayan-uttarakhand">🏔️ Uttarakhand (Joshimath - Chamoli Landslide/Subsidence)</option>
         <option value="western-ghats-kerala">🌿 Kerala (Wayanad / Chooralmala Debris Surge)</option>
         <option value="coastal-odisha">🌊 Odisha (Kendrapara - Satabhaya Coastal Erosion)</option>
       </select>
     </div>
 
-    <!-- Right Controls: Weather Telemetry & Action Plan Export -->
-    <div class="flex items-center space-x-2.5">
-      <div id="weather-badge" class="hidden lg:flex items-center space-x-3 bg-[#090e1a]/90 border border-slate-700/50 rounded-xl px-3 py-1.5 text-xs">
-        <div class="flex items-center space-x-1.5 text-sky-400 font-mono">
+    <!-- Right Controls: Weather Telemetry, Civilian Portal, AHP/ML, Benchmark, Mesh & Action Plan Export -->
+    <div class="flex items-center space-x-2">
+      <div id="weather-badge" class="hidden xl:flex items-center space-x-2.5 bg-[#090e1a]/90 border border-slate-700/50 rounded-xl px-2.5 py-1 text-xs">
+        <div class="flex items-center space-x-1 text-sky-400 font-mono">
           <i data-lucide="cloud-rain" class="w-3.5 h-3.5"></i>
           <span id="header-rainfall" class="font-medium">45 mm/24h</span>
         </div>
         <span class="text-slate-700">|</span>
-        <div class="flex items-center space-x-1.5 text-amber-400 font-mono">
+        <div class="flex items-center space-x-1 text-amber-400 font-mono">
           <i data-lucide="waves" class="w-3.5 h-3.5"></i>
           <span id="header-river" class="font-medium">River 2.1m</span>
         </div>
       </div>
 
-      <button id="btn-fetch-live-data" class="flex items-center space-x-1.5 bg-emerald-950/70 hover:bg-emerald-900/90 text-emerald-300 text-xs font-semibold px-3 py-2 rounded-xl border border-emerald-500/30 shadow-sm transition-all cursor-pointer">
+      <button id="btn-fetch-live-data" class="flex items-center space-x-1.5 bg-emerald-950/70 hover:bg-emerald-900/90 text-emerald-300 text-xs font-semibold px-2.5 py-1.5 rounded-xl border border-emerald-500/30 shadow-sm transition-all cursor-pointer" title="Fetch live satellite meteorological observation">
         <i data-lucide="satellite" class="w-3.5 h-3.5 text-emerald-400"></i>
-        <span>Live Satellite Weather</span>
+        <span class="hidden sm:inline">Live Weather</span>
       </button>
 
-      <button id="btn-open-ml-modal" class="flex items-center space-x-1.5 bg-purple-950/70 hover:bg-purple-900/90 text-purple-300 text-xs font-semibold px-3 py-2 rounded-xl border border-purple-500/30 shadow-sm transition-all cursor-pointer">
+      <button id="btn-open-citizen-portal" class="flex items-center space-x-1.5 bg-rose-950/70 hover:bg-rose-900/90 text-rose-300 text-xs font-semibold px-2.5 py-1.5 rounded-xl border border-rose-500/30 shadow-sm transition-all cursor-pointer" title="Open Crowdsourced Civilian Ground Telemetry Portal">
+        <i data-lucide="megaphone" class="w-3.5 h-3.5 text-rose-400"></i>
+        <span>Civilian Desk</span>
+      </button>
+
+      <button id="btn-open-ml-modal" class="flex items-center space-x-1.5 bg-purple-950/70 hover:bg-purple-900/90 text-purple-300 text-xs font-semibold px-2.5 py-1.5 rounded-xl border border-purple-500/30 shadow-sm transition-all cursor-pointer" title="Saaty AHP MCDA & ML Ensemble Architecture">
         <i data-lucide="cpu" class="w-3.5 h-3.5 text-purple-400"></i>
-        <span>AI / ML Architecture</span>
+        <span class="hidden md:inline">AI / AHP Engine</span>
       </button>
 
-      <button id="btn-open-action-plan" class="flex items-center space-x-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xs font-semibold px-4 py-2 rounded-xl shadow-md shadow-blue-950/50 border border-blue-400/20 transition-all cursor-pointer">
-        <i data-lucide="file-text" class="w-4 h-4"></i>
-        <span>SDMA Action Plan</span>
+      <button id="btn-open-benchmark" class="flex items-center space-x-1.5 bg-amber-950/70 hover:bg-amber-900/90 text-amber-300 text-xs font-semibold px-2.5 py-1.5 rounded-xl border border-amber-500/30 shadow-sm transition-all cursor-pointer" title="View Slide 6 Competitive Benchmark Matrix vs ISRO Bhuvan & SACHET">
+        <i data-lucide="bar-chart-3" class="w-3.5 h-3.5 text-amber-400"></i>
+        <span class="hidden lg:inline">Market Benchmark</span>
+      </button>
+
+      <button id="btn-toggle-mesh" class="flex items-center space-x-1.5 bg-slate-900/90 hover:bg-slate-800 text-slate-300 text-xs font-semibold px-2.5 py-1.5 rounded-xl border border-slate-700/60 shadow-sm transition-all cursor-pointer" title="Toggle Disaster Mode: RF Mesh Network Routing Simulation">
+        <i data-lucide="radio" class="w-3.5 h-3.5 text-cyan-400"></i>
+        <span id="mesh-status-text" class="hidden sm:inline">RF Mesh: Off</span>
+      </button>
+
+      <button id="btn-open-action-plan" class="flex items-center space-x-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xs font-semibold px-3 py-1.5 rounded-xl shadow-md shadow-blue-950/50 border border-blue-400/20 transition-all cursor-pointer">
+        <i data-lucide="file-text" class="w-3.5 h-3.5"></i>
+        <span>Action Plan</span>
       </button>
     </div>
   </header>
@@ -243,6 +259,22 @@
               Relocation Transit Vectors
             </span>
             <input type="checkbox" id="layer-toggle-vectors" checked class="rounded border-slate-700 text-indigo-600 focus:ring-0 cursor-pointer" />
+          </label>
+
+          <label class="flex items-center justify-between cursor-pointer hover:text-white">
+            <span class="flex items-center">
+              <span class="w-4 h-1 bg-amber-400 rounded-sm mr-2 border border-amber-300"></span>
+              Evacuation Corridors & Chokepoints
+            </span>
+            <input type="checkbox" id="layer-toggle-corridors" checked class="rounded border-slate-700 text-amber-500 focus:ring-0 cursor-pointer" />
+          </label>
+
+          <label class="flex items-center justify-between cursor-pointer hover:text-white">
+            <span class="flex items-center">
+              <span class="w-2.5 h-2.5 rounded-full bg-rose-500 mr-2 border border-yellow-300"></span>
+              Civilian Hazard Reports
+            </span>
+            <input type="checkbox" id="layer-toggle-citizenreports" checked class="rounded border-slate-700 text-rose-500 focus:ring-0 cursor-pointer" />
           </label>
         </div>
 
@@ -666,10 +698,290 @@
         </div>
       </div>
 
+      <!-- Saaty Analytic Hierarchy Process (AHP) Pairwise Comparison Matrix & Verification -->
+      <div class="p-3.5 rounded-xl bg-slate-900/90 border border-purple-800/50 space-y-3">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center space-x-2">
+            <span class="px-2 py-0.5 rounded bg-purple-900/80 text-purple-300 font-mono text-[10px] font-bold border border-purple-600/50">Saaty MCDA</span>
+            <span class="text-xs font-bold text-white uppercase tracking-wide">AHP Pairwise Comparison Matrix [5×5]</span>
+          </div>
+          <span class="text-[10px] font-mono font-semibold px-2 py-0.5 rounded bg-emerald-950/80 text-emerald-400 border border-emerald-600/40">
+            CR = 0.0061 &lt; 0.10 (Consistent)
+          </span>
+        </div>
+
+        <p class="text-[11px] text-slate-300 leading-relaxed">
+          Statutory multi-hazard weights derived via the <strong>Analytic Hierarchy Process (Saaty, 1980; Gacu et al., 2025)</strong>, rigorously eliminating arbitrary weight assignment with automated Consistency Ratio (<span class="font-mono text-emerald-400">CR &lt; 0.10</span>) verification.
+        </p>
+
+        <!-- 5x5 Matrix Table -->
+        <div class="overflow-x-auto">
+          <table class="w-full text-[10px] font-mono text-center border-collapse border border-slate-700">
+            <thead class="bg-slate-800/80 text-slate-300">
+              <tr>
+                <th class="border border-slate-700 p-1.5 text-left">Criteria</th>
+                <th class="border border-slate-700 p-1.5">Rainfall</th>
+                <th class="border border-slate-700 p-1.5">Slope</th>
+                <th class="border border-slate-700 p-1.5">Wetness</th>
+                <th class="border border-slate-700 p-1.5">Drainage</th>
+                <th class="border border-slate-700 p-1.5">Fault Line</th>
+                <th class="border border-slate-700 p-1.5 bg-purple-950/60 text-purple-300 font-bold">Weight (w)</th>
+              </tr>
+            </thead>
+            <tbody class="text-slate-200">
+              <tr>
+                <td class="border border-slate-700 p-1.5 text-left font-semibold text-sky-300">Rainfall (C1)</td>
+                <td class="border border-slate-700 p-1.5 bg-slate-800/40">1.000</td>
+                <td class="border border-slate-700 p-1.5">1.333</td>
+                <td class="border border-slate-700 p-1.5">1.667</td>
+                <td class="border border-slate-700 p-1.5">3.000</td>
+                <td class="border border-slate-700 p-1.5">5.000</td>
+                <td class="border border-slate-700 p-1.5 bg-purple-950/40 font-bold text-sky-400">34.2%</td>
+              </tr>
+              <tr>
+                <td class="border border-slate-700 p-1.5 text-left font-semibold text-blue-300">Slope (C2)</td>
+                <td class="border border-slate-700 p-1.5">0.750</td>
+                <td class="border border-slate-700 p-1.5 bg-slate-800/40">1.000</td>
+                <td class="border border-slate-700 p-1.5">1.333</td>
+                <td class="border border-slate-700 p-1.5">2.500</td>
+                <td class="border border-slate-700 p-1.5">4.000</td>
+                <td class="border border-slate-700 p-1.5 bg-purple-950/40 font-bold text-blue-400">28.4%</td>
+              </tr>
+              <tr>
+                <td class="border border-slate-700 p-1.5 text-left font-semibold text-purple-300">Wetness TWI (C3)</td>
+                <td class="border border-slate-700 p-1.5">0.600</td>
+                <td class="border border-slate-700 p-1.5">0.750</td>
+                <td class="border border-slate-700 p-1.5 bg-slate-800/40">1.000</td>
+                <td class="border border-slate-700 p-1.5">2.000</td>
+                <td class="border border-slate-700 p-1.5">3.500</td>
+                <td class="border border-slate-700 p-1.5 bg-purple-950/40 font-bold text-purple-400">20.7%</td>
+              </tr>
+              <tr>
+                <td class="border border-slate-700 p-1.5 text-left font-semibold text-amber-300">Stream Dist (C4)</td>
+                <td class="border border-slate-700 p-1.5">0.333</td>
+                <td class="border border-slate-700 p-1.5">0.400</td>
+                <td class="border border-slate-700 p-1.5">0.500</td>
+                <td class="border border-slate-700 p-1.5 bg-slate-800/40">1.000</td>
+                <td class="border border-slate-700 p-1.5">2.500</td>
+                <td class="border border-slate-700 p-1.5 bg-purple-950/40 font-bold text-amber-400">11.1%</td>
+              </tr>
+              <tr>
+                <td class="border border-slate-700 p-1.5 text-left font-semibold text-rose-300">Fault Line (C5)</td>
+                <td class="border border-slate-700 p-1.5">0.200</td>
+                <td class="border border-slate-700 p-1.5">0.250</td>
+                <td class="border border-slate-700 p-1.5">0.286</td>
+                <td class="border border-slate-700 p-1.5">0.400</td>
+                <td class="border border-slate-700 p-1.5 bg-slate-800/40">1.000</td>
+                <td class="border border-slate-700 p-1.5 bg-purple-950/40 font-bold text-rose-400">5.6%</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Eigenvector and Mathematical Proof Footnote -->
+        <div class="grid grid-cols-4 gap-2 text-center text-[10px] font-mono bg-slate-950/80 p-2 rounded-lg border border-slate-800">
+          <div><span class="text-slate-400">λ_max:</span> <strong class="text-cyan-300">5.0272</strong></div>
+          <div><span class="text-slate-400">CI:</span> <strong class="text-white">0.0068</strong></div>
+          <div><span class="text-slate-400">RI (n=5):</span> <strong class="text-slate-300">1.1200</strong></div>
+          <div><span class="text-slate-400">CR (CI/RI):</span> <strong class="text-emerald-400">0.0061 &lt; 0.10</strong></div>
+        </div>
+      </div>
+
       <div class="pt-2 flex justify-between items-center text-[10px] text-slate-400 font-mono border-t border-slate-800">
         <span>Inference Latency: ~1.2ms / prediction</span>
-        <span>Runtime: Node.js V8 Native Vectorized Engine</span>
+        <span>AHP Verification: Mathematically Consistent (Saaty Standard)</span>
       </div>
+    </div>
+  </div>
+
+  <!-- Crowdsourced Civilian Hazard Desk (Citizen Portal Modal) -->
+  <div id="citizen-portal-modal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-[700] hidden flex items-center justify-center p-4">
+    <div class="glass-panel text-slate-100 w-full max-w-4xl rounded-2xl p-6 max-h-[92vh] overflow-y-auto shadow-2xl border border-rose-500/40 relative space-y-4">
+      <div class="flex items-center justify-between border-b border-rose-900/40 pb-3">
+        <div class="flex items-center space-x-3">
+          <div class="w-10 h-10 rounded-lg bg-rose-950/90 border border-rose-500/50 flex items-center justify-center text-rose-400 shadow">
+            <i data-lucide="megaphone" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <div class="flex items-center space-x-2">
+              <h2 class="text-base font-bold text-white uppercase tracking-wide">Civilian Hazard Desk & Ground Telemetry</h2>
+              <span class="px-2 py-0.5 rounded-full bg-rose-900/70 text-[9px] font-mono font-bold text-rose-300 border border-rose-700/50">RESILIGO CITIZEN PORTAL</span>
+            </div>
+            <p class="text-xs text-rose-300/80 font-mono">Frontline Crowdsourcing for Gram Panchayats & At-Risk Habitations</p>
+          </div>
+        </div>
+        <button id="citizen-modal-close-btn" class="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <!-- Two-Column Layout: Form on Left, Live Telemetry Stream on Right -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+        
+        <!-- Left: Form to Report Hazard -->
+        <div class="bg-slate-900/80 rounded-xl p-4 border border-slate-800 space-y-3">
+          <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+            <span class="text-xs font-bold uppercase tracking-wider text-rose-300 flex items-center">
+              <i data-lucide="alert-triangle" class="w-3.5 h-3.5 mr-1.5 text-rose-400"></i> Report New Ground Hazard
+            </span>
+            <span class="text-[10px] text-slate-400 font-mono">Live Sync to NDRF</span>
+          </div>
+
+          <form id="citizen-report-form" class="space-y-2.5 text-xs">
+            <div>
+              <label class="block text-slate-300 font-semibold mb-1">Reporter Name & Affiliation</label>
+              <input type="text" id="cit-name" required placeholder="e.g. Ramesh Singh (Gram Pradhan)" class="w-full bg-[#121c32] border border-slate-700 rounded-lg px-3 py-1.5 text-white focus:outline-none focus:border-rose-400" />
+            </div>
+
+            <div>
+              <label class="block text-slate-300 font-semibold mb-1">Contact Phone (Confidential)</label>
+              <input type="tel" id="cit-phone" required placeholder="e.g. +91 94120 XXXXX" class="w-full bg-[#121c32] border border-slate-700 rounded-lg px-3 py-1.5 text-white focus:outline-none focus:border-rose-400" />
+            </div>
+
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <label class="block text-slate-300 font-semibold mb-1">Hazard Category</label>
+                <select id="cit-hazard" class="w-full bg-[#121c32] border border-slate-700 rounded-lg px-2.5 py-1.5 text-white focus:outline-none focus:border-rose-400">
+                  <option value="NEW_TENSION_CRACKS">Surface Tension Cracks / Subsidence</option>
+                  <option value="RIVER_SURGE_DEBRIS">River Surge & Toe Debris Ingress</option>
+                  <option value="BRIDGE_SCOUR_WASHOUT">Bridge Scour / Access Cutoff</option>
+                  <option value="SOIL_PIPING_MUDFLOW">Soil Piping & Saturated Mudflow</option>
+                  <option value="ROCKFALL_SCARP">Active Rockfall / Boulder Slump</option>
+                </select>
+              </div>
+
+              <div>
+                <label class="block text-slate-300 font-semibold mb-1">Severity Assessment</label>
+                <select id="cit-severity" class="w-full bg-[#121c32] border border-slate-700 rounded-lg px-2.5 py-1.5 text-white focus:outline-none focus:border-rose-400 font-semibold text-rose-300">
+                  <option value="CRITICAL">Critical (Immediate Evac Needed)</option>
+                  <option value="HIGH" selected>High (Significant Threat)</option>
+                  <option value="MEDIUM">Medium (Monitored Risk)</option>
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-slate-300 font-semibold mb-1">Settlement / Landmark Location</label>
+              <input type="text" id="cit-location" required placeholder="e.g. Lower Bazaar Footbridge, Ward 3" class="w-full bg-[#121c32] border border-slate-700 rounded-lg px-3 py-1.5 text-white focus:outline-none focus:border-rose-400" />
+            </div>
+
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <label class="block text-slate-300 font-semibold mb-1">Affected Households</label>
+                <input type="number" id="cit-households" min="1" max="500" value="12" class="w-full bg-[#121c32] border border-slate-700 rounded-lg px-3 py-1.5 text-white focus:outline-none focus:border-rose-400 font-mono" />
+              </div>
+
+              <div>
+                <label class="block text-slate-300 font-semibold mb-1">GPS Coordinates</label>
+                <button type="button" id="btn-use-map-coords" class="w-full py-1.5 px-2 bg-blue-950/70 hover:bg-blue-900 border border-blue-700 rounded-lg text-blue-300 text-[11px] font-medium flex items-center justify-center space-x-1">
+                  <i data-lucide="map-pin" class="w-3 h-3"></i>
+                  <span id="coord-display-text">Current Map Center</span>
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-slate-300 font-semibold mb-1">Ground Observation Notes</label>
+              <textarea id="cit-description" rows="3" required placeholder="Describe what you see: crack width in cm, sound of rushing water, tilting electric poles, mudflow speed..." class="w-full bg-[#121c32] border border-slate-700 rounded-lg px-3 py-1.5 text-white focus:outline-none focus:border-rose-400 text-xs"></textarea>
+            </div>
+
+            <button type="submit" class="w-full py-2.5 rounded-xl bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 font-bold text-white shadow-lg shadow-rose-950/50 flex items-center justify-center space-x-2 cursor-pointer transition-all">
+              <i data-lucide="send" class="w-4 h-4"></i>
+              <span>Transmit Hazard Ping to NDRF Operations</span>
+            </button>
+          </form>
+        </div>
+
+        <!-- Right: Real-Time Crowdsourced Hazard Feed -->
+        <div class="bg-slate-900/80 rounded-xl p-4 border border-slate-800 flex flex-col h-[520px]">
+          <div class="flex items-center justify-between border-b border-slate-800 pb-2 mb-3 shrink-0">
+            <span class="text-xs font-bold uppercase tracking-wider text-slate-200 flex items-center">
+              <i data-lucide="activity" class="w-3.5 h-3.5 mr-1.5 text-cyan-400"></i> Active Ground Reports Feed
+            </span>
+            <span id="citizen-report-counter" class="text-[10px] font-mono px-2 py-0.5 rounded bg-blue-950 text-blue-300 border border-blue-800">
+              3 reports active
+            </span>
+          </div>
+
+          <div id="citizen-reports-list" class="flex-1 overflow-y-auto space-y-2.5 pr-1">
+            <!-- Dynamically populated report cards -->
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Market Benchmark Modal (Slide 6 Comparison Matrix) -->
+  <div id="market-benchmark-modal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-[700] hidden flex items-center justify-center p-4">
+    <div class="glass-panel text-slate-100 w-full max-w-4xl rounded-2xl p-6 max-h-[92vh] overflow-y-auto shadow-2xl border border-amber-500/40 relative space-y-4">
+      <div class="flex items-center justify-between border-b border-amber-900/40 pb-3">
+        <div class="flex items-center space-x-3">
+          <div class="w-10 h-10 rounded-lg bg-amber-950/90 border border-amber-500/50 flex items-center justify-center text-amber-400 shadow">
+            <i data-lucide="bar-chart-3" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <h2 class="text-base font-bold text-white uppercase tracking-wide">Comparison Between Available Market-Models and RESILIGO</h2>
+            <p class="text-xs text-amber-300/80 font-mono">Competitive Benchmarking as per SIH 2026 Evaluation Deck (Slide 6)</p>
+          </div>
+        </div>
+        <button id="benchmark-modal-close-btn" class="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <!-- Comparative Table -->
+      <div class="overflow-x-auto rounded-xl border border-slate-700 bg-slate-900/90 shadow-inner">
+        <table class="w-full text-xs text-left border-collapse">
+          <thead class="bg-slate-800 text-slate-200 uppercase text-[10px] tracking-wider">
+            <tr>
+              <th class="border-b border-slate-700 p-3">Feature</th>
+              <th class="border-b border-slate-700 p-3 text-center bg-slate-800/60">ISRO / NRSC NDEM &amp; BHUVAN</th>
+              <th class="border-b border-slate-700 p-3 text-center bg-slate-800/40">NDMA - SACHET</th>
+              <th class="border-b border-slate-700 p-3 text-center bg-blue-950/80 text-cyan-300 font-bold border-l-2 border-r-2 border-cyan-500/40">
+                RESILIGO (OUR SOLUTION)
+              </th>
+            </tr>
+          </thead>
+          <tbody id="market-benchmark-table-body" class="divide-y divide-slate-800 text-slate-300">
+            <!-- Populated dynamically via JS -->
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Research Literature References (Cited in Slide 6) -->
+      <div class="p-3.5 rounded-xl bg-slate-900/90 border border-slate-800 space-y-2">
+        <div class="text-xs font-bold uppercase tracking-wider text-slate-200 flex items-center">
+          <i data-lucide="book-open" class="w-4 h-4 mr-1.5 text-cyan-400"></i> Peer-Reviewed Literature &amp; Statutory Guidelines Cited
+        </div>
+        <div id="literature-citations-list" class="text-[11px] text-slate-400 space-y-1.5">
+          <!-- Populated dynamically -->
+        </div>
+      </div>
+
+      <div class="pt-2 flex justify-between items-center text-[10px] text-slate-400 font-mono border-t border-slate-800">
+        <span>Team Bonchito Bytes (SIH26099)</span>
+        <span>MHA Disaster Management Division Relocation Standard</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- RF Mesh Network Mode Toast Banner -->
+  <div id="mesh-toast" class="fixed top-20 right-6 z-[800] hidden transition-all transform duration-300 ease-in-out">
+    <div class="p-3.5 rounded-2xl bg-cyan-950/95 border-2 border-cyan-400 text-cyan-100 shadow-2xl flex items-center space-x-3 backdrop-blur-xl">
+      <div class="w-8 h-8 rounded-lg bg-cyan-800/80 flex items-center justify-center text-cyan-300 animate-pulse">
+        <i data-lucide="radio" class="w-4 h-4"></i>
+      </div>
+      <div class="text-xs">
+        <div class="font-bold flex items-center space-x-1.5">
+          <span>DISASTER RF MESH TELEMETRY ACTIVE</span>
+          <span class="px-1.5 py-0.2 rounded bg-cyan-900 text-[9px] font-mono">VHF/UHF 868MHz</span>
+        </div>
+        <p class="text-[10px] text-cyan-300/80 mt-0.5">Cellular/broadband towers bypassed. Transmitting lightweight Geo-packet vectors to NDRF handheld terminals.</p>
+      </div>
+      <button id="mesh-toast-close" class="p-1 rounded text-cyan-400 hover:text-white">
+        <i data-lucide="x" class="w-4 h-4"></i>
+      </button>
     </div>
   </div>
 

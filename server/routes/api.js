@@ -2,6 +2,9 @@ const express = require("express");
 const router = express.Router();
 const { regions, runRegionalAssessment, fetchLiveWeatherData } = require("../engine/simulationEngine");
 const { ML_MODEL_METADATA } = require("../engine/mlModel");
+const { solveSaatyAHP } = require("../engine/ahpEngine");
+const { getEvacuationCorridors } = require("../engine/routingEngine");
+const { getCivilianReports, submitCivilianReport, updateReportStatus } = require("../engine/citizenReportEngine");
 
 // Get Machine Learning Model Details & Explainable AI Weights
 router.get("/ml/model-info", (req, res) => {
@@ -163,6 +166,107 @@ router.get("/export/action-plan", (req, res) => {
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
+});
+
+// 5. Saaty Analytic Hierarchy Process (AHP) Pairwise Matrix & Consistency Ratio (CR < 0.10)
+router.get("/ahp/weights", (req, res) => {
+  try {
+    const ahpResults = solveSaatyAHP();
+    res.json({ success: true, ahp: ahpResults });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// 6. Safe Evacuation Corridors & Chokepoint Identification Engine
+router.get("/evacuation-corridors", (req, res) => {
+  try {
+    const regionId = req.query.regionId || "himalayan-uttarakhand";
+    const rainfall = Number(req.query.rainfall) || 45;
+    const riverLevel = Number(req.query.riverLevel) || 2.1;
+
+    const corridors = getEvacuationCorridors(regionId, rainfall, riverLevel);
+    res.json({ success: true, count: corridors.length, corridors });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// 7. Crowdsourced Civilian Hazard Desk (Citizen Portal Telemetry)
+router.get("/citizen-reports", (req, res) => {
+  try {
+    const regionId = req.query.regionId || null;
+    const reports = getCivilianReports(regionId);
+    res.json({ success: true, count: reports.length, reports });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+router.post("/citizen-reports", (req, res) => {
+  try {
+    const report = submitCivilianReport(req.body);
+    res.status(201).json({ success: true, report, message: "Civilian hazard report logged and dispatched to NDRF ground squad." });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+router.post("/citizen-reports/:id/verify", (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status = "VERIFIED_BY_NDRF", action = "Verified by NDRF Quick Reaction Team. Evacuation alert issued." } = req.body;
+    const updated = updateReportStatus(id, status, action);
+    if (!updated) {
+      return res.status(404).json({ success: false, message: "Report not found." });
+    }
+    res.json({ success: true, report: updated });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// 8. Competitive Market Comparison Matrix (Slide 6 Benchmark)
+const MARKET_BENCHMARK = {
+  title: "Comparison between Available Market-models and RESILIGO",
+  features: [
+    { feature: "Multi-Hazard Support", isro: "Yes", sachet: "Yes", resiligo: "Yes" },
+    { feature: "GIS-Based Hazard Mapping", isro: "Yes", sachet: "No", resiligo: "Yes" },
+    { feature: "Satellite / DEM Data Integration", isro: "Yes", sachet: "No", resiligo: "Yes" },
+    { feature: "Real-Time / Near-Real-Time Updates", isro: "Yes", sachet: "Yes", resiligo: "Yes" },
+    { feature: "AI/ML-Based Risk Prediction", isro: "Limited", sachet: "No", resiligo: "Yes" },
+    { feature: "Population Exposure Analysis", isro: "Yes", sachet: "Limited", resiligo: "Yes" },
+    { feature: "Vulnerability Assessment", isro: "Limited", sachet: "No", resiligo: "Yes" },
+    { feature: "Dynamic Red-Zone Identification", isro: "Limited", sachet: "No", resiligo: "Yes" },
+    { feature: "Relocation Priority Ranking", isro: "No", sachet: "No", resiligo: "Yes" },
+    { feature: "Safe Relocation Site Identification", isro: "No", sachet: "No", resiligo: "Yes" },
+    { feature: "Carrying Capacity Assessment", isro: "No", sachet: "No", resiligo: "Yes" },
+    { feature: "End-to-End Relocation Planning", isro: "No", sachet: "No", resiligo: "Yes" }
+  ],
+  references: [
+    {
+      citation: "K. Ullah, Y. Wang, Z. Fang, L. Wang, and M. Rahman, 'Multi-hazard susceptibility mapping based on Convolutional Neural Networks', Geoscience Frontiers, vol. 13, no. 5, p. 101425, Sep. 2022, doi: 10.1016/j.gsf.2022.101425."
+    },
+    {
+      citation: "J. Gacu et al., 'Integrated multi-hazard risk assessment under compound disasters using analytical hierarchy process (AHP)', Heliyon, vol. 11, no. 3, p. e43173, Feb. 2025, doi: 10.1016/j.heliyon.2025.e43173."
+    },
+    {
+      citation: "B. Pradhan, 'Landslide susceptibility mapping of a catchment area using analytical hierarchy process, remote sensing and GIS keys', International Journal of Computer and Information Engineering, vol. 4, no. 12, pp. 1958–1965, 2010."
+    },
+    {
+      citation: "S. A. Ologunorisa and E. C. Chinda, 'Suitability analysis of resettlement sites for flood disaster victims using GIS and remote sensing', Journal of Environmental Science and Technology, vol. 8, no. 3, pp. 118–127, 2015, doi: 10.5923/j.env.20150503.02."
+    },
+    {
+      citation: "T. L. Saaty, 'Decision making with the analytic hierarchy process', International Journal of Services Sciences, vol. 1, no. 1, pp. 83–98, 2008, doi: 10.1504/IJSS.2008.017590."
+    },
+    {
+      citation: "National Disaster Management Authority (NDMA), 'National Disaster Management Guidelines: Management of Landslides and Snow Avalanches', Government of India, New Delhi, Tech. Rep., 2009. [Online]. Available: https://ndma.gov.in"
+    }
+  ]
+};
+
+router.get("/market-comparison", (req, res) => {
+  res.json({ success: true, comparison: MARKET_BENCHMARK });
 });
 
 module.exports = router;

@@ -11,7 +11,14 @@ let orangeZoneLayerGroup = null;
 let habitationsLayerGroup = null;
 let safeSitesLayerGroup = null;
 let vectorsLayerGroup = null;
+let corridorsLayerGroup = null;
+let citizenReportsLayerGroup = null;
 let baseTileLayer = null;
+
+// Telemetry state
+let activeCorridors = [];
+let activeCitizenReports = [];
+let isMeshActive = false;
 
 // CARTO Basemap API Key configuration
 const CARTO_API_KEY = "cb1_32tl_1_60f815ee37d4d1cee8d60fbd";
@@ -58,6 +65,8 @@ function initMap() {
   vectorsLayerGroup = L.layerGroup().addTo(map);
   safeSitesLayerGroup = L.layerGroup().addTo(map);
   habitationsLayerGroup = L.layerGroup().addTo(map);
+  corridorsLayerGroup = L.layerGroup().addTo(map);
+  citizenReportsLayerGroup = L.layerGroup().addTo(map);
 
   // Basemap switchers
   const bmButtons = [
@@ -109,10 +118,16 @@ async function loadRegionalData(regionId, customOverrides = {}) {
       url += `&soilSaturation=${customOverrides.soilSaturationPercent}`;
     }
 
-    const res = await fetch(url);
-    const json = await res.json();
-    if (json.success) {
-      assessmentData = json.data;
+    const [res, corrRes, citRes] = await Promise.all([
+      fetch(url).then(r => r.json()),
+      fetch(`/api/evacuation-corridors?regionId=${regionId}&rainfall=${customOverrides.currentRainfall24hMm || 45}&riverLevel=${customOverrides.riverLevelM || 2.1}`).then(r => r.json()).catch(() => ({ success: false })),
+      fetch(`/api/citizen-reports?regionId=${regionId}`).then(r => r.json()).catch(() => ({ success: false }))
+    ]);
+
+    if (res.success) {
+      assessmentData = res.data;
+      if (corrRes.success) activeCorridors = corrRes.corridors;
+      if (citRes.success) activeCitizenReports = citRes.reports;
       updateUI(assessmentData);
     }
   } catch (err) {
@@ -161,6 +176,8 @@ function renderMapLayers(data) {
   habitationsLayerGroup.clearLayers();
   safeSitesLayerGroup.clearLayers();
   vectorsLayerGroup.clearLayers();
+  corridorsLayerGroup.clearLayers();
+  citizenReportsLayerGroup.clearLayers();
 
   // Set Map Center
   map.setView(data.region.center, data.region.zoom);
@@ -327,6 +344,236 @@ function renderMapLayers(data) {
 
     vectorsLayerGroup.addLayer(line);
   });
+
+  // 5. Render Evacuation Corridors & Chokepoints
+  renderCorridors(activeCorridors);
+
+  // 6. Render Crowdsourced Civilian Hazard Reports
+  renderCitizenReports(activeCitizenReports);
+}
+
+// Render Evacuation Corridors & Chokepoints
+function renderCorridors(corridors) {
+  corridorsLayerGroup.clearLayers();
+  if (!corridors || !corridors.length) return;
+
+  corridors.forEach(corr => {
+    const isRed = corr.dynamicClearanceStatus === "RED_COMPROMISED";
+    const isAmber = corr.dynamicClearanceStatus === "AMBER_RESTRICTED_CONVOY";
+    const routeColor = isRed ? "#dc2626" : isAmber ? "#f59e0b" : "#10b981";
+
+    const polyline = L.polyline(corr.path, {
+      color: routeColor,
+      weight: 4,
+      dashArray: isRed ? "6, 8" : isAmber ? "8, 6" : null,
+      opacity: 0.85
+    });
+
+    polyline.bindTooltip(`
+      <div class="text-[11px] font-sans">
+        <strong class="${isRed ? 'text-red-400' : isAmber ? 'text-amber-400' : 'text-emerald-400'}">${corr.name}</strong><br/>
+        Type: ${corr.routeType} | Length: ${corr.lengthKm} km<br/>
+        Status: <strong>${corr.safetyRating}</strong> (Max Speed: ${corr.recommendedSpeedKmh} km/h)
+      </div>
+    `, { sticky: true });
+
+    corridorsLayerGroup.addLayer(polyline);
+
+    // Chokepoints
+    corr.chokepoints.forEach(cp => {
+      const isCritical = cp.currentStatus === "CRITICAL_AVOID" || cp.currentRiskScore >= 0.8;
+      const markerHtml = `
+        <div class="relative flex items-center justify-center cursor-pointer">
+          <div class="w-7 h-7 rounded-lg ${isCritical ? 'bg-red-700 border-2 border-red-300' : 'bg-amber-600 border-2 border-amber-300'} flex items-center justify-center shadow-md animate-bounce">
+            <span class="text-xs">⚠️</span>
+          </div>
+        </div>
+      `;
+
+      const icon = L.divIcon({
+        html: markerHtml,
+        className: "",
+        iconSize: [28, 28],
+        iconAnchor: [14, 14]
+      });
+
+      const cpMarker = L.marker(cp.coordinates, { icon });
+      cpMarker.bindPopup(`
+        <div class="text-xs p-1 space-y-1.5 min-w-[240px]">
+          <div class="flex items-center justify-between border-b border-slate-700 pb-1">
+            <span class="font-bold text-[10px] uppercase ${isCritical ? 'text-red-400' : 'text-amber-400'}">Chokepoint Bottleneck</span>
+            <span class="font-mono text-[9px] px-1.5 py-0.5 rounded ${isCritical ? 'bg-red-950 text-red-300 border border-red-800' : 'bg-amber-950 text-amber-300 border border-amber-800'}">Risk: ${(cp.currentRiskScore * 100).toFixed(0)}%</span>
+          </div>
+          <div class="font-bold text-white text-sm">${cp.name}</div>
+          <p class="text-slate-300 text-[11px] leading-relaxed">${cp.description}</p>
+          <div class="bg-slate-900/90 rounded p-2 text-[10px] space-y-1 font-mono">
+            <div class="text-amber-300 font-bold">Evacuation Bottleneck:</div>
+            <div class="text-slate-300">${cp.evacuationBottleneck}</div>
+          </div>
+        </div>
+      `);
+      corridorsLayerGroup.addLayer(cpMarker);
+    });
+  });
+}
+
+// Render Civilian Hazard Reports on Map and in Feed
+function renderCitizenReports(reports) {
+  citizenReportsLayerGroup.clearLayers();
+  if (!reports || !reports.length) {
+    renderCitizenReportsFeed([]);
+    return;
+  }
+
+  reports.forEach(rep => {
+    const isCritical = rep.severity === "CRITICAL";
+    const isVerified = rep.status === "VERIFIED_BY_NDRF";
+    const pinColor = isVerified ? "#10b981" : isCritical ? "#ef4444" : "#f59e0b";
+
+    const markerHtml = `
+      <div class="relative flex items-center justify-center cursor-pointer">
+        <div class="w-7 h-7 rounded-full flex items-center justify-center shadow-lg border-2 border-white" style="background-color: ${pinColor}">
+          <span class="text-xs text-white">📢</span>
+        </div>
+        ${!isVerified ? '<span class="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-red-400 animate-ping"></span>' : ''}
+      </div>
+    `;
+
+    const icon = L.divIcon({
+      html: markerHtml,
+      className: "",
+      iconSize: [28, 28],
+      iconAnchor: [14, 14]
+    });
+
+    const marker = L.marker(rep.coordinates, { icon });
+    marker.bindPopup(`
+      <div class="text-xs p-1 space-y-1.5 min-w-[240px]">
+        <div class="flex items-center justify-between border-b border-slate-700 pb-1">
+          <span class="text-[10px] font-mono px-1.5 py-0.5 rounded ${isVerified ? 'bg-emerald-950 text-emerald-300 border border-emerald-700' : 'bg-rose-950 text-rose-300 border border-rose-700'}">
+            ${rep.status.replace(/_/g, ' ')}
+          </span>
+          <span class="text-[9px] text-slate-400 font-mono">${rep.id}</span>
+        </div>
+        <div class="font-bold text-white text-sm">${rep.locationName}</div>
+        <div class="text-[11px] text-amber-300 font-medium">Type: ${rep.hazardType.replace(/_/g, ' ')} (${rep.affectedHouseholds} HH Affected)</div>
+        <p class="text-slate-300 text-[11px] leading-relaxed italic">"${rep.description}"</p>
+        <div class="text-[10px] text-slate-400 pt-1 border-t border-slate-800">
+          Reported by: <strong>${rep.reporterName}</strong> (${rep.contactPhone})
+        </div>
+        <div class="text-[10px] text-cyan-300 bg-slate-900/90 p-1.5 rounded">
+          <strong>NDRF Action:</strong> ${rep.officialActionTaken}
+        </div>
+        ${!isVerified ? `
+          <button onclick="verifyCitizenReport('${rep.id}')" class="w-full py-1.5 rounded bg-emerald-600 hover:bg-emerald-500 font-bold text-white text-[11px] mt-1 shadow cursor-pointer">
+            ✓ Verify Report & Deploy Patrol
+          </button>
+        ` : ''}
+      </div>
+    `);
+    citizenReportsLayerGroup.addLayer(marker);
+  });
+
+  renderCitizenReportsFeed(reports);
+}
+
+// Render feed inside Citizen Portal Modal
+function renderCitizenReportsFeed(reports) {
+  const container = document.getElementById("citizen-reports-list");
+  const counter = document.getElementById("citizen-report-counter");
+  if (!container) return;
+
+  if (counter) counter.textContent = `${reports.length} reports logged`;
+  container.innerHTML = "";
+
+  if (reports.length === 0) {
+    container.innerHTML = `<div class="p-6 text-center text-slate-500 text-xs">No active civilian hazard pings in this sector.</div>`;
+    return;
+  }
+
+  reports.forEach(rep => {
+    const isVerified = rep.status === "VERIFIED_BY_NDRF";
+    const isCritical = rep.severity === "CRITICAL";
+
+    const item = document.createElement("div");
+    item.className = `p-3 rounded-xl border ${isVerified ? 'bg-emerald-950/20 border-emerald-800/40' : isCritical ? 'bg-rose-950/30 border-rose-800/50' : 'bg-slate-800/50 border-slate-700/60'} space-y-2 text-xs transition-all`;
+
+    item.innerHTML = `
+      <div class="flex items-start justify-between">
+        <div>
+          <span class="font-mono text-[9px] px-1.5 py-0.5 rounded ${isVerified ? 'bg-emerald-900/80 text-emerald-300' : 'bg-rose-900/80 text-rose-300'} font-bold">
+            ${rep.status.replace(/_/g, ' ')}
+          </span>
+          <h4 class="font-bold text-white text-xs mt-1">${rep.locationName}</h4>
+        </div>
+        <span class="font-mono text-[9px] text-slate-400">${new Date(rep.reportedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+      </div>
+
+      <div class="text-[11px] text-amber-300 font-medium">
+        ⚠️ ${rep.hazardType.replace(/_/g, ' ')} • <span class="font-mono text-white font-bold">${rep.affectedHouseholds} HH</span> at risk
+      </div>
+
+      <p class="text-slate-300 text-[11px] leading-relaxed">
+        ${rep.description}
+      </p>
+
+      <div class="text-[10px] text-slate-400 font-mono">
+        Reporter: <strong class="text-slate-300">${rep.reporterName}</strong> (${rep.contactPhone})
+      </div>
+
+      <div class="text-[10px] text-cyan-300 bg-slate-900/80 p-2 rounded border border-slate-800">
+        <strong>Action:</strong> ${rep.officialActionTaken}
+      </div>
+
+      <div class="pt-1 flex space-x-2">
+        <button onclick="flyToCoordinates(${rep.coordinates[0]}, ${rep.coordinates[1]})" class="flex-1 py-1 rounded bg-slate-800 hover:bg-slate-700 text-[10px] text-slate-200 font-semibold border border-slate-700 cursor-pointer">
+          📍 Center on Map
+        </button>
+        ${!isVerified ? `
+          <button onclick="verifyCitizenReport('${rep.id}')" class="flex-1 py-1 rounded bg-emerald-600 hover:bg-emerald-500 text-[10px] text-white font-bold shadow cursor-pointer">
+            ✓ Verify &amp; Act
+          </button>
+        ` : ''}
+      </div>
+    `;
+
+    container.appendChild(item);
+  });
+}
+
+// Global flyTo helper
+function flyToCoordinates(lat, lng) {
+  if (map) {
+    map.flyTo([lat, lng], 15, { duration: 1.5 });
+    // Close modal if open
+    const modal = document.getElementById("citizen-portal-modal");
+    if (modal) modal.classList.add("hidden");
+  }
+}
+
+// Global verify citizen report helper
+async function verifyCitizenReport(reportId) {
+  try {
+    const res = await fetch(`/api/citizen-reports/${reportId}/verify`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        status: "VERIFIED_BY_NDRF",
+        action: "Ground squad dispatched. Priority evacuation warning confirmed under DM Act Sec 34."
+      })
+    });
+    const json = await res.json();
+    if (json.success) {
+      // Update local state
+      const idx = activeCitizenReports.findIndex(r => r.id === reportId);
+      if (idx !== -1) {
+        activeCitizenReports[idx] = json.report;
+        renderCitizenReports(activeCitizenReports);
+      }
+    }
+  } catch (err) {
+    console.error("Verification failed:", err);
+  }
 }
 
 // Render Carrying Capacity Tab
@@ -532,6 +779,22 @@ function initEventListeners() {
     else map.removeLayer(vectorsLayerGroup);
   });
 
+  const toggleCorridors = document.getElementById("layer-toggle-corridors");
+  if (toggleCorridors) {
+    toggleCorridors.addEventListener("change", (e) => {
+      if (e.target.checked) map.addLayer(corridorsLayerGroup);
+      else map.removeLayer(corridorsLayerGroup);
+    });
+  }
+
+  const toggleCitizenReports = document.getElementById("layer-toggle-citizenreports");
+  if (toggleCitizenReports) {
+    toggleCitizenReports.addEventListener("change", (e) => {
+      if (e.target.checked) map.addLayer(citizenReportsLayerGroup);
+      else map.removeLayer(citizenReportsLayerGroup);
+    });
+  }
+
   // Sliders input updates
   const sliderRain = document.getElementById("slider-rainfall");
   sliderRain.addEventListener("input", (e) => {
@@ -661,6 +924,127 @@ function initEventListeners() {
     });
   }
 
+  // Crowdsourced Civilian Hazard Desk Modal
+  const btnOpenCitizen = document.getElementById("btn-open-citizen-portal");
+  const citizenModal = document.getElementById("citizen-portal-modal");
+  const btnCloseCitizen = document.getElementById("citizen-modal-close-btn");
+
+  if (btnOpenCitizen && citizenModal) {
+    btnOpenCitizen.addEventListener("click", () => {
+      renderCitizenReportsFeed(activeCitizenReports);
+      citizenModal.classList.remove("hidden");
+      initIcons();
+    });
+  }
+
+  if (btnCloseCitizen && citizenModal) {
+    btnCloseCitizen.addEventListener("click", () => {
+      citizenModal.classList.add("hidden");
+    });
+  }
+
+  // Use map center coordinates for citizen report
+  const btnUseMapCoords = document.getElementById("btn-use-map-coords");
+  if (btnUseMapCoords) {
+    btnUseMapCoords.addEventListener("click", () => {
+      const center = map.getCenter();
+      document.getElementById("coord-display-text").textContent = `Lat: ${center.lat.toFixed(4)}, Lng: ${center.lng.toFixed(4)}`;
+      btnUseMapCoords.setAttribute("data-lat", center.lat.toFixed(4));
+      btnUseMapCoords.setAttribute("data-lng", center.lng.toFixed(4));
+    });
+  }
+
+  // Citizen Report Form Submit
+  const citForm = document.getElementById("citizen-report-form");
+  if (citForm) {
+    citForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const coordBtn = document.getElementById("btn-use-map-coords");
+      const center = map.getCenter();
+      const lat = coordBtn.getAttribute("data-lat") ? Number(coordBtn.getAttribute("data-lat")) : Number(center.lat.toFixed(4));
+      const lng = coordBtn.getAttribute("data-lng") ? Number(coordBtn.getAttribute("data-lng")) : Number(center.lng.toFixed(4));
+
+      const payload = {
+        regionId: currentRegionId,
+        reporterName: document.getElementById("cit-name").value.trim(),
+        contactPhone: document.getElementById("cit-phone").value.trim(),
+        hazardType: document.getElementById("cit-hazard").value,
+        severity: document.getElementById("cit-severity").value,
+        locationName: document.getElementById("cit-location").value.trim(),
+        coordinates: [lat, lng],
+        affectedHouseholds: Number(document.getElementById("cit-households").value) || 1,
+        description: document.getElementById("cit-description").value.trim()
+      };
+
+      try {
+        const res = await fetch("/api/citizen-reports", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        const json = await res.json();
+        if (json.success) {
+          activeCitizenReports.unshift(json.report);
+          renderCitizenReports(activeCitizenReports);
+          citForm.reset();
+          coordBtn.removeAttribute("data-lat");
+          coordBtn.removeAttribute("data-lng");
+          document.getElementById("coord-display-text").textContent = "Current Map Center";
+          alert("✓ Civilian hazard observation logged & transmitted to NDRF Command!");
+        }
+      } catch (err) {
+        console.error("Submission failed:", err);
+      }
+    });
+  }
+
+  // Market Benchmark Modal (Slide 6 Comparison)
+  const btnOpenBenchmark = document.getElementById("btn-open-benchmark");
+  const benchmarkModal = document.getElementById("market-benchmark-modal");
+  const btnCloseBenchmark = document.getElementById("benchmark-modal-close-btn");
+
+  if (btnOpenBenchmark && benchmarkModal) {
+    btnOpenBenchmark.addEventListener("click", async () => {
+      await openMarketBenchmarkModal();
+    });
+  }
+
+  if (btnCloseBenchmark && benchmarkModal) {
+    btnCloseBenchmark.addEventListener("click", () => {
+      benchmarkModal.classList.add("hidden");
+    });
+  }
+
+  // Disaster Mode: RF Mesh Network Toggle
+  const btnToggleMesh = document.getElementById("btn-toggle-mesh");
+  const meshStatusText = document.getElementById("mesh-status-text");
+  const meshToast = document.getElementById("mesh-toast");
+  const meshToastClose = document.getElementById("mesh-toast-close");
+
+  if (btnToggleMesh) {
+    btnToggleMesh.addEventListener("click", () => {
+      isMeshActive = !isMeshActive;
+      if (isMeshActive) {
+        btnToggleMesh.classList.remove("bg-slate-900/90", "text-slate-300");
+        btnToggleMesh.classList.add("bg-cyan-950", "text-cyan-300", "border-cyan-400");
+        if (meshStatusText) meshStatusText.textContent = "RF Mesh: Active (868MHz)";
+        if (meshToast) meshToast.classList.remove("hidden");
+      } else {
+        btnToggleMesh.classList.remove("bg-cyan-950", "text-cyan-300", "border-cyan-400");
+        btnToggleMesh.classList.add("bg-slate-900/90", "text-slate-300");
+        if (meshStatusText) meshStatusText.textContent = "RF Mesh: Off";
+        if (meshToast) meshToast.classList.add("hidden");
+      }
+      initIcons();
+    });
+  }
+
+  if (meshToastClose && meshToast) {
+    meshToastClose.addEventListener("click", () => {
+      meshToast.classList.add("hidden");
+    });
+  }
+
   // Priority Tier Filter Buttons in Tab 3
   document.querySelectorAll(".filter-tier").forEach(btn => {
     btn.addEventListener("click", () => {
@@ -677,6 +1061,56 @@ function initEventListeners() {
       });
     });
   });
+}
+
+// Generate and Open Market Benchmark Modal
+async function openMarketBenchmarkModal() {
+  try {
+    const res = await fetch("/api/market-comparison");
+    const json = await res.json();
+    if (!json.success) return;
+
+    const { comparison } = json;
+    const tbody = document.getElementById("market-benchmark-table-body");
+    const citationsList = document.getElementById("literature-citations-list");
+
+    if (tbody) {
+      tbody.innerHTML = comparison.features.map(f => {
+        const renderBadge = (val, isOurs = false) => {
+          if (val === "Yes") {
+            return `<span class="px-2 py-0.5 rounded ${isOurs ? 'bg-emerald-900/90 text-emerald-300 border border-emerald-500 font-bold' : 'bg-emerald-950/60 text-emerald-400'} font-mono text-[10px]">✓ Yes</span>`;
+          } else if (val === "Limited") {
+            return `<span class="px-2 py-0.5 rounded bg-amber-950/60 text-amber-400 font-mono text-[10px]">⚠️ Limited</span>`;
+          } else {
+            return `<span class="px-2 py-0.5 rounded bg-rose-950/60 text-rose-400 font-mono text-[10px]">✗ No</span>`;
+          }
+        };
+
+        return `
+          <tr class="hover:bg-slate-800/40">
+            <td class="p-3 font-semibold text-slate-200">${f.feature}</td>
+            <td class="p-3 text-center bg-slate-800/20">${renderBadge(f.isro)}</td>
+            <td class="p-3 text-center bg-slate-800/10">${renderBadge(f.sachet)}</td>
+            <td class="p-3 text-center bg-blue-950/40 border-l-2 border-r-2 border-cyan-500/30">${renderBadge(f.resiligo, true)}</td>
+          </tr>
+        `;
+      }).join("");
+    }
+
+    if (citationsList) {
+      citationsList.innerHTML = comparison.references.map((r, i) => `
+        <div class="flex items-start space-x-2">
+          <span class="font-mono text-cyan-400 font-bold shrink-0">[${i + 1}]</span>
+          <span class="leading-relaxed">${r.citation}</span>
+        </div>
+      `).join("");
+    }
+
+    document.getElementById("market-benchmark-modal").classList.remove("hidden");
+    initIcons();
+  } catch (err) {
+    console.error("Market benchmark error:", err);
+  }
 }
 
 // Tab navigation handler

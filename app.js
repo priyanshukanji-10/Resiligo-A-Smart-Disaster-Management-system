@@ -32,13 +32,20 @@ const tileProviders = {
 };
 
 // Initialize Application
-document.addEventListener("DOMContentLoaded", async () => {
+function bootstrapApp() {
+  console.log("🛰️ [RESILIGO v2.0.2] Initializing platform...");
   initIcons();
   initMap();
   initTabs();
   initEventListeners();
-  await loadRegionalData(currentRegionId);
-});
+  loadRegionalData(currentRegionId);
+}
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", bootstrapApp);
+} else {
+  bootstrapApp();
+}
 
 function initIcons() {
   if (window.lucide) {
@@ -107,7 +114,9 @@ function switchBasemap(type) {
 // Fetch and load assessment data for selected region
 async function loadRegionalData(regionId, customOverrides = {}) {
   try {
+    console.log(`[RESILIGO] Loading assessment for sector: ${regionId}`);
     if (typeof ResiligoEngine !== "undefined") {
+      console.log(`[RESILIGO] Executing in-browser ResiligoEngine calculations...`);
       const data = ResiligoEngine.runRegionalAssessment(regionId, customOverrides);
       const corridors = ResiligoEngine.getEvacuationCorridors(
         regionId,
@@ -119,6 +128,7 @@ async function loadRegionalData(regionId, customOverrides = {}) {
       assessmentData = data;
       activeCorridors = corridors;
       activeCitizenReports = reports;
+      console.log(`[RESILIGO] Assessment complete! Red zones: ${data.kpis.redZonesActiveCount}, Habitations: ${data.habitations.length}`);
       updateUI(assessmentData);
       return;
     }

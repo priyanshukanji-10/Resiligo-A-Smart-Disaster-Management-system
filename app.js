@@ -107,6 +107,22 @@ function switchBasemap(type) {
 // Fetch and load assessment data for selected region
 async function loadRegionalData(regionId, customOverrides = {}) {
   try {
+    if (typeof ResiligoEngine !== "undefined") {
+      const data = ResiligoEngine.runRegionalAssessment(regionId, customOverrides);
+      const corridors = ResiligoEngine.getEvacuationCorridors(
+        regionId,
+        customOverrides.currentRainfall24hMm,
+        customOverrides.riverLevelM
+      );
+      const reports = ResiligoEngine.getCivilianReports(regionId);
+
+      assessmentData = data;
+      activeCorridors = corridors;
+      activeCitizenReports = reports;
+      updateUI(assessmentData);
+      return;
+    }
+
     let url = `/api/assessment?regionId=${regionId}`;
     if (customOverrides.currentRainfall24hMm !== undefined) {
       url += `&rainfall=${customOverrides.currentRainfall24hMm}`;
@@ -554,6 +570,22 @@ function flyToCoordinates(lat, lng) {
 // Global verify citizen report helper
 async function verifyCitizenReport(reportId) {
   try {
+    if (typeof ResiligoEngine !== "undefined") {
+      const updated = ResiligoEngine.updateReportStatus(
+        reportId,
+        "VERIFIED_BY_NDRF",
+        "Ground squad dispatched. Priority evacuation warning confirmed under DM Act Sec 34."
+      );
+      if (updated) {
+        const idx = activeCitizenReports.findIndex(r => r.id === reportId);
+        if (idx !== -1) {
+          activeCitizenReports[idx] = updated;
+          renderCitizenReports(activeCitizenReports);
+        }
+      }
+      return;
+    }
+
     const res = await fetch(`/api/citizen-reports/${reportId}/verify`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -829,6 +861,19 @@ function initEventListeners() {
     btn.addEventListener("click", async () => {
       const preset = btn.getAttribute("data-preset");
       try {
+        if (typeof ResiligoEngine !== "undefined") {
+          const presets = {
+            cloudburst: { currentRainfall24hMm: 165, riverLevelM: 4.8, soilSaturationPercent: 94 },
+            glof: { currentRainfall24hMm: 95, riverLevelM: 6.2, soilSaturationPercent: 88 },
+            monsoon_surge: { currentRainfall24hMm: 120, riverLevelM: 3.9, soilSaturationPercent: 91 },
+            baseline: {}
+          };
+          const overrides = presets[preset] || {};
+          assessmentData = ResiligoEngine.runRegionalAssessment(currentRegionId, overrides);
+          updateUI(assessmentData);
+          return;
+        }
+
         const res = await fetch("/api/simulate", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -862,14 +907,34 @@ function initEventListeners() {
       btnFetchLive.disabled = true;
 
       try {
-        const res = await fetch(`/api/live-weather?regionId=${currentRegionId}`);
-        const json = await res.json();
-        if (json.success && json.liveWeather) {
-          assessmentData = json.data;
-          updateUI(assessmentData);
+        let liveWeather = null;
+        if (typeof ResiligoEngine !== "undefined") {
+          const coordsMap = {
+            "himalayan-uttarakhand": { lat: 30.5526, lng: 79.0669 },
+            "western-ghats-kerala": { lat: 11.6854, lng: 76.1320 },
+            "coastal-odisha": { lat: 20.2961, lng: 85.8245 }
+          };
+          const coord = coordsMap[currentRegionId] || { lat: 30.5526, lng: 79.0669 };
+          liveWeather = await ResiligoEngine.fetchLiveWeatherData(coord.lat, coord.lng);
+          if (liveWeather) {
+            assessmentData = ResiligoEngine.runRegionalAssessment(currentRegionId, {
+              currentRainfall24hMm: liveWeather.estimated24hRainfallMm
+            });
+            updateUI(assessmentData);
+          }
+        } else {
+          const res = await fetch(`/api/live-weather?regionId=${currentRegionId}`);
+          const json = await res.json();
+          if (json.success && json.liveWeather) {
+            liveWeather = json.liveWeather;
+            assessmentData = json.data;
+            updateUI(assessmentData);
+          }
+        }
 
+        if (liveWeather) {
           // Toast / badge feedback
-          btnFetchLive.innerHTML = `<span>🛰️ Live Sync (${json.liveWeather.temperatureC}°C, ${json.liveWeather.estimated24hRainfallMm}mm)</span>`;
+          btnFetchLive.innerHTML = `<span>🛰️ Live Sync (${liveWeather.temperatureC}°C, ${liveWeather.estimated24hRainfallMm}mm)</span>`;
           btnFetchLive.classList.remove("bg-emerald-950/80");
           btnFetchLive.classList.add("bg-cyan-950/90", "border-cyan-400", "text-cyan-300");
 
@@ -977,6 +1042,18 @@ function initEventListeners() {
       };
 
       try {
+        if (typeof ResiligoEngine !== "undefined") {
+          const newReport = ResiligoEngine.submitCivilianReport(payload);
+          activeCitizenReports.unshift(newReport);
+          renderCitizenReports(activeCitizenReports);
+          citForm.reset();
+          coordBtn.removeAttribute("data-lat");
+          coordBtn.removeAttribute("data-lng");
+          document.getElementById("coord-display-text").textContent = "Current Map Center";
+          alert("✓ Civilian hazard observation logged & transmitted to NDRF Command!");
+          return;
+        }
+
         const res = await fetch("/api/citizen-reports", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -1066,11 +1143,16 @@ function initEventListeners() {
 // Generate and Open Market Benchmark Modal
 async function openMarketBenchmarkModal() {
   try {
-    const res = await fetch("/api/market-comparison");
-    const json = await res.json();
-    if (!json.success) return;
+    let comparison = null;
+    if (typeof ResiligoEngine !== "undefined") {
+      comparison = ResiligoEngine.getMarketBenchmark();
+    } else {
+      const res = await fetch("/api/market-comparison");
+      const json = await res.json();
+      if (json.success) comparison = json.comparison;
+    }
+    if (!comparison) return;
 
-    const { comparison } = json;
     const tbody = document.getElementById("market-benchmark-table-body");
     const citationsList = document.getElementById("literature-citations-list");
 
@@ -1142,11 +1224,16 @@ function initTabs() {
 // Generate and Open Official Action Plan Modal
 async function openActionPlanModal() {
   try {
-    const res = await fetch(`/api/export/action-plan?regionId=${currentRegionId}`);
-    const json = await res.json();
-    if (!json.success) return;
+    let plan = null;
+    if (typeof ResiligoEngine !== "undefined") {
+      plan = ResiligoEngine.generateActionPlan(currentRegionId);
+    } else {
+      const res = await fetch(`/api/export/action-plan?regionId=${currentRegionId}`);
+      const json = await res.json();
+      if (json.success) plan = json.dispatchPlan;
+    }
+    if (!plan) return;
 
-    const plan = json.dispatchPlan;
     const container = document.getElementById("action-plan-content");
 
     let tableRows = plan.priorityRelocationRoster.map(r => `
